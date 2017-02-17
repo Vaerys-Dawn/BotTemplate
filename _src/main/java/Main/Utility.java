@@ -1,8 +1,9 @@
 package Main;
 
-import Commands.Command;
-import Commands.CommandObject;
+import Annotations.CommandAnnotation;
 import Handlers.FileHandler;
+import Handlers.MessageHandler;
+import POGOs.GuildConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,21 +14,13 @@ import sx.blah.discord.util.Image;
 
 import java.awt.*;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Created by Vaerys on 17/08/2016.
@@ -51,31 +44,39 @@ public class Utility {
         return roleID;
     }
 
-    public static boolean testForPerms(Permissions[] perms, IUser user, IGuild guild) {
-        EnumSet<Permissions> toMatch = EnumSet.noneOf(Permissions.class);
-        toMatch.addAll(Arrays.asList(perms));
-        //Debug code.
-        ArrayList<String> toMatchList = new ArrayList<String>() {{
-            addAll(toMatch.stream().map(Enum::toString).collect(Collectors.toList()));
-        }};
-        ArrayList<String> userList = new ArrayList<String>() {{
-            addAll(user.getPermissionsForGuild(guild).stream().map(Enum::toString).collect(Collectors.toList()));
-        }};
-        logger.debug("To Match : " + Utility.listFormatter(toMatchList, true));
-        logger.debug("User Perms : " + Utility.listFormatter(userList, true));
-        logger.debug("Result : " + user.getPermissionsForGuild(guild).containsAll(toMatch));
-        //end Debug
-        return user.getPermissionsForGuild(guild).containsAll(toMatch);
+    public static boolean testForPerms(Permissions[] perms, IUser author, IGuild guild) {
+        Permissions[] compiledPerms = new Permissions[perms.length];
+        int permsIndex = 0;
+        for (Permissions aP : perms) {
+            for (IRole r : author.getRolesForGuild(guild)) {
+                for (Permissions p : r.getPermissions()) {
+                    if (aP.equals(p)) {
+                        compiledPerms[permsIndex] = p;
+                    }
+                }
+            }
+            permsIndex++;
+        }
+        if (Arrays.equals(compiledPerms, perms)) {
+            return true;
+        } else return false;
     }
 
     //Command Utils
-    public static String getCommandInfo(Command command, CommandObject commandObject) {
-        String response = ">> **" + commandObject.guildConfig.getPrefixCommand() + command.names()[0];
-        if (command.usage() != null) {
-            response += " " + command.usage();
+    public static String getCommandInfo(CommandAnnotation annotation, GuildConfig guildConfig) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("`" + guildConfig.getPrefixCommand() + annotation.name() + " " + annotation.usage() + "`");
+        return builder.toString();
+    }
+
+    public static String getCommandInfo(String methodName, GuildConfig guildConfig) {
+        try {
+            Method method = MessageHandler.class.getMethod(methodName);
+            return getCommandInfo(method.getAnnotation(CommandAnnotation.class), guildConfig);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
         }
-        response += "** <<";
-        return response;
+        return null;
     }
 
     //File Utils
@@ -100,11 +101,6 @@ public class Utility {
     }
 
     public static Object initFile(String guildID, String filePath, Class<?> objClass) {
-        List<String> fileContents = FileHandler.readFromFile(Utility.getFilePath(guildID, filePath));
-        if (fileContents == null || fileContents.size() == 0 || fileContents.get(0).equals("null")) {
-            logger.error(Utility.getFilePath(guildID, filePath) + ". FILE EMPTY PLEASE CHECK FILE OR LOAD BACKUP.");
-            return null;
-        }
         Object object = null;
         int counter = 0;
         while (object == null) {
@@ -116,7 +112,7 @@ public class Utility {
                 e.printStackTrace();
             }
         }
-        if (counter > 1) {
+        if (counter > 1){
             logger.debug(filePath + " File for guild with id " + guildID + " took " + counter + " tries to Init");
         }
         return object;
@@ -144,59 +140,42 @@ public class Utility {
         }
     }
 
-    public static void backupConfigFile(String file,String fileBackup) {
-        try {
-            File backup1 = new File(fileBackup + 1);
-            File backup2 = new File(fileBackup + 2);
-            File backup3 = new File(fileBackup + 3);
-            File toBackup = new File(file);
-            if (backup3.exists()) backup3.delete();
-            if (backup2.exists()) backup2.renameTo(backup3);
-            if (backup1.exists()) backup1.renameTo(backup2);
-            if (toBackup.exists())
-                Files.copy(Paths.get(toBackup.getPath()), backup1.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     //Discord Request Processors
-    public static RequestBuffer.RequestFuture<String> sendMessage(String message, IChannel channel) {
+    public static RequestBuffer.RequestFuture<Boolean> sendMessage(String message, IChannel channel) {
         return RequestBuffer.request(() -> {
             if (message == null) {
-                return null;
+                return false;
             }
             if (message.length() < 2000) {
                 try {
                     if (StringUtils.containsOnly(message, "\n")) {
-                        return null;
+                        return true;
                     }
                     if (message != null || !message.equals("")) {
-                        return channel.sendMessage(message).getID();
+                        channel.sendMessage(message);
                     }
                 } catch (MissingPermissionsException e) {
                     logger.debug("Error sending message to channel with id: " + channel.getID() + " on guild with id: " + channel.getGuild().getID() +
                             ".\n" + Constants.PREFIX_EDT_LOGGER_INDENT + "Reason: Missing permissions.");
-                    return null;
+                    return true;
                 } catch (DiscordException e) {
                     if (e.getMessage().contains("CloudFlare")) {
-                        return sendMessage(message, channel).get();
+                        sendMessage(message, channel);
                     } else {
                         e.printStackTrace();
-                        logger.error(message);
-                        return null;
+                        return true;
                     }
                 }
             } else {
                 logger.debug("Message to be sent to channel with id: " + channel.getID() + "on guild with id: " + channel.getGuild().getID() +
                         ".\n" + Constants.PREFIX_EDT_LOGGER_INDENT + "Reason: Message to large.");
-                return null;
+                return true;
             }
-            return null;
+            return false;
         });
     }
 
-    public static RequestBuffer.RequestFuture<Boolean> sendFile(String message, File file, IChannel channel) {
+    public static RequestBuffer.RequestFuture<Boolean> sendFile(String message, IChannel channel, File file) {
         return RequestBuffer.request(() -> {
             try {
                 if (StringUtils.containsOnly(message, "\n") || (message == null) || message.equals("")) {
@@ -217,7 +196,7 @@ public class Utility {
                 }
             } catch (DiscordException e) {
                 if (e.getMessage().contains("CloudFlare")) {
-                    sendFile(message, file, channel);
+                    sendMessage(message, channel);
                 } else {
                     e.printStackTrace();
                     return true;
@@ -233,81 +212,14 @@ public class Utility {
         });
     }
 
-    public static RequestBuffer.RequestFuture<Boolean> sendFile(String message, String imageURL, IChannel channel) {
-        return RequestBuffer.request(() -> {
-            String messageID = "";
-            try {
-                messageID = sendMessage("`Loading...`", channel).get();
-                final HttpURLConnection connection = (HttpURLConnection) new URL(imageURL).openConnection();
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) " + "AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.65 Safari/537.31");
-                InputStream stream = connection.getInputStream();
-                String[] urlSplit = imageURL.split(Pattern.quote("."));
-                String suffix = "." + urlSplit[urlSplit.length - 1];
-                if (!suffix.contains(".png") && !suffix.contains(".jpg") && !suffix.contains(".gif") && !suffix.contains(".webp")) {
-                    sendMessage(message + " " + imageURL, channel);
-                    return true;
-                }
-                if (StringUtils.containsOnly(message, "\n") || (message == null) || message.equals("")) {
-                    if (imageURL != null) {
-                        channel.sendFile("", stream, suffix);
-                    } else {
-                        logger.debug("Error sending File to channel with id: " + channel.getID() + " on guild with id: " + channel.getGuild().getID() +
-                                ".\n" + Constants.PREFIX_EDT_LOGGER_INDENT + "Reason: No file to send");
-                        return true;
-                    }
-                } else {
-                    if (imageURL != null) {
-                        channel.sendFile(message, true, stream, suffix);
-                    } else {
-                        sendMessage(message, channel);
-                        return true;
-                    }
-                }
-                Globals.getClient().getMessageByID(messageID).delete();
-            } catch (DiscordException e) {
-                if (e.getMessage().contains("CloudFlare")) {
-                    sendFile(message, imageURL, channel);
-                    deleteMessage(Globals.getClient().getMessageByID(messageID));
-                } else {
-                    e.printStackTrace();
-                    return true;
-                }
-            } catch (MalformedURLException e) {
-                sendMessage(message + " " + imageURL, channel);
-                deleteMessage(Globals.getClient().getMessageByID(messageID));
-            } catch (FileNotFoundException e) {
-                Utility.sendMessage("> Image Not Found : " + imageURL, channel);
-                deleteMessage(Globals.getClient().getMessageByID(messageID));
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (MissingPermissionsException e) {
-                sendMessage(message + " <" + imageURL + ">", channel);
-                deleteMessage(Globals.getClient().getMessageByID(messageID));
-                logger.debug("Error sending File to channel with id: " + channel.getID() + " on guild with id: " + channel.getGuild().getID() +
-                        ".\n" + Constants.PREFIX_EDT_LOGGER_INDENT + "Reason: Missing permissions.");
-                return true;
-            }
-            return false;
-        });
-    }
-
-    public static boolean sendDMEmbed(String message, EmbedObject embed, String userID) {
-        IChannel channel = Globals.getClient().getOrCreatePMChannel(Globals.getClient().getUserByID(userID));
-        if (channel != null){
-            return sendEmbededMessage(message,embed,channel).get();
-        }else {
-            return true;
-        }
-    }
-
-    public static RequestBuffer.RequestFuture<Boolean> sendEmbededMessage(String message, EmbedObject embed, IChannel channel) {
+    public static RequestBuffer.RequestFuture<Boolean> sendEmbededMessage(String message, EmbedObject embed, IChannel channel, boolean b) {
         return RequestBuffer.request(() -> {
             try {
                 String iMessage = message;
-                if (iMessage == null) {
+                if (iMessage == null){
                     iMessage = "";
                 }
-                channel.sendMessage(iMessage, embed, false);
+                channel.sendMessage(iMessage,embed,b);
             } catch (DiscordException e) {
                 if (e.getMessage().contains("CloudFlare")) {
                     sendMessage(message, channel);
@@ -319,39 +231,25 @@ public class Utility {
                 logger.debug("Error sending File to channel with id: " + channel.getID() + " on guild with id: " + channel.getGuild().getID() +
                         ".\n" + Constants.PREFIX_EDT_LOGGER_INDENT + "Reason: Missing permissions.");
                 StringBuilder embedtoString = new StringBuilder();
-                if (embed.author != null) embedtoString.append("**" + embed.author.name + "**\n");
                 if (embed.title != null) embedtoString.append("**" + embed.title + "**\n");
                 if (embed.description != null) embedtoString.append(embed.description + "\n");
-                if (embed.fields != null) {
-                    for (EmbedObject.EmbedFieldObject field : embed.fields) {
-                        embedtoString.append("**" + field.name + "**\n" + field.value + "\n");
-                    }
-                }
-                if (embed.footer != null) embedtoString.append("*" + embed.footer.text + "*");
+                if (embed.footer != null) embedtoString.append("*" + embed.footer.text +"*");
                 if (embed.image != null) embedtoString.append(embed.image.url);
-                sendMessage(embedtoString.toString(), channel);
+                sendMessage(embedtoString.toString(),channel);
                 return true;
             }
             return false;
         });
     }
 
-
     public static RequestBuffer.RequestFuture<Boolean> sendDM(String message, String userID) {
         return RequestBuffer.request(() -> {
             try {
                 IChannel channel = Globals.getClient().getOrCreatePMChannel(Globals.getClient().getUserByID(userID));
-                if (message == null || message.isEmpty()) {
-                    return true;
-                }
                 sendMessage(message, channel);
             } catch (DiscordException e) {
-                if (e.getMessage().contains("CloudFlare")) {
-                    sendDM(message, userID);
-                } else {
-                    e.printStackTrace();
-                    return true;
-                }
+                e.printStackTrace();
+                return true;
             } catch (NullPointerException e) {
                 logger.debug("[sendDM] " + e.getMessage());
                 return true;
@@ -431,22 +329,6 @@ public class Utility {
             } catch (DiscordException e) {
                 if (e.getMessage().contains("CloudFlare")) {
                     updateAvatar(avatar);
-                } else {
-                    e.printStackTrace();
-                    return true;
-                }
-            }
-            return false;
-        });
-    }
-
-    public static RequestBuffer.RequestFuture<Boolean> updateUsername(String botName) {
-        return RequestBuffer.request(() -> {
-            try {
-                Globals.getClient().changeUsername(botName);
-            } catch (DiscordException e) {
-                if (e.getMessage().contains("CloudFlare")) {
-                    updateUsername(botName);
                 } else {
                     e.printStackTrace();
                     return true;
@@ -547,131 +429,5 @@ public class Utility {
         return time;
     }
 
-    public static Boolean testModifier(String modifier) {
-        switch (modifier.toLowerCase()) {
-            case "+":
-                return true;
-            case "-":
-                return false;
-            case "add":
-                return true;
-            case "del":
-                return false;
-            default:
-                return null;
-        }
-    }
 
-    public static boolean canBypass(IUser author, IGuild guild) {
-        if (author.getID().equals(Globals.creatorID)) {
-            logger.debug("User is Creator, BYPASSING.");
-            return true;
-        }
-        if (author.getID().equals(guild.getOwnerID())) {
-            logger.debug("User is Guild Owner, GUILD : \"" + guild.getID() + "\", BYPASSING.");
-            return true;
-        }
-        return testForPerms(new Permissions[]{Permissions.ADMINISTRATOR}, author, guild);
-    }
-
-    public static String getMentionUserID(String content) {
-        if (content.contains("<@")) {
-            String userID = StringUtils.substringBetween(content, "<@!", ">");
-            if (userID == null) {
-                userID = StringUtils.substringBetween(content, "<@", ">");
-            }
-            IUser user = Globals.getClient().getUserByID(userID);
-            if (user != null) {
-                return userID;
-            } else {
-                return null;
-            }
-        } else {
-            return null;
-        }
-    }
-
-    public static String convertMentionToText(String from) {
-        String last;
-        do {
-            last = from;
-            if (from.contains("<@") || from.contains("<!@")) {
-                String userID = getMentionUserID(from);
-                if (userID != null) {
-                    IUser mentioned = Globals.getClient().getUserByID(userID);
-                    from = from.replace("<@!" + userID + ">", mentioned.getName() + "#" + mentioned.getDiscriminator());
-                    from = from.replace("<@" + userID + ">", mentioned.getName() + "#" + mentioned.getDiscriminator());
-                }
-            }
-        } while (!last.equals(from));
-        return from;
-    }
-
-    public static void listFormatterEmbed(String title, EmbedBuilder builder, ArrayList<String> list, boolean horizontal) {
-        String formattedList = listFormatter(list, horizontal);
-        if (title == null || title.isEmpty()) {
-            title = Command.spacer;
-        }
-        if (formattedList.isEmpty()) {
-            builder.appendField(title, Command.spacer, false);
-            return;
-        }
-        if (horizontal) {
-            builder.appendField(title, "`" + formattedList + "`", false);
-        } else {
-            builder.appendField(title, "```" + formattedList + "```", false);
-        }
-    }
-
-    public static void listFormatterEmbed(String title, EmbedBuilder builder, ArrayList<String> list, boolean horizontal, String suffix) {
-        String formattedList = listFormatter(list, horizontal);
-        if (title == null || title.isEmpty()) {
-            title = Command.spacer;
-        }
-        if (formattedList.isEmpty()) {
-            builder.appendField(title, Command.spacer + suffix, false);
-            return;
-        }
-        if (horizontal) {
-            builder.appendField(title,"`" + formattedList + "`\n" + suffix, false);
-        } else {
-            builder.appendField(title,"```" + formattedList + "```\n" + suffix, false);
-        }
-    }
-
-    public static String listFormatter(ArrayList<String> list, boolean horizontal) {
-        StringBuilder formattedList = new StringBuilder();
-        if (list.size() == 0) {
-            return "";
-        }
-        if (horizontal) {
-            for (String s : list) {
-                formattedList.append(s + ", ");
-            }
-            formattedList.delete(formattedList.length() - 2, formattedList.length());
-            formattedList.append(".");
-            return formattedList.toString();
-        } else {
-            formattedList.append("\n");
-            for (String s : list) {
-                formattedList.append(s + "\n");
-            }
-            return formattedList.toString();
-        }
-    }
-
-    public static List<IRole> getRolesByName(IGuild guild, String name) {
-        List<IRole> roles = guild.getRoles().stream().filter(r -> r.getName().equalsIgnoreCase(name)).collect(Collectors.toList());
-        return roles;
-    }
-
-    public static String loggingFormatter(String type, String command, String args, CommandObject commandObject) {
-        return type + " : \"" + command +
-                "\", ARGS : \"" + args +
-                "\", GUILD : \"" + commandObject.guildID +
-                "\", CHANNEL : \"" + commandObject.channelID +
-                "\", USER : \"" + commandObject.authorID +
-                "\", MESSAGE : \"" + commandObject.messageID +
-                "\".";
-    }
 }
