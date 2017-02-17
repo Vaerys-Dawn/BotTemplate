@@ -23,7 +23,7 @@ public class Config {
             resetToDefault = false;
             botName = "S.A.I.L";
             creatorID = "153159020528533505";
-            defaultPrefixCommand = "$";
+            defaultPrefixCommand = "-";
             defaultAvatarFile = "Avatar.png";
             doDailyAvatars = false;
             dailyAvatarName = "Avatar_For_#day#.png";
