@@ -2,6 +2,7 @@ package Commands.Admin;
 
 import Commands.Command;
 import Commands.CommandObject;
+import Main.Globals;
 import Main.Utility;
 import sx.blah.discord.handle.obj.Permissions;
 import sx.blah.discord.util.EmbedBuilder;
@@ -18,35 +19,20 @@ public class ChannelHere implements Command {
     public String execute(String args, CommandObject command) {
         StringBuilder builder = new StringBuilder();
         if (!args.isEmpty()) {
-            try {
-                for (Field f : Command.class.getDeclaredFields()) {
-                    if (f.getName().contains("CHANNEL_") && f.getType() == String.class) {
-                        if (args.equalsIgnoreCase((String) f.get(null))) {
-                            command.guildConfig.setUpChannel((String) f.get(null), command.channelID);
-                            return "> This channel is now the Server's **" + f.get(null) + "** channel.";
-                        }
-                    }
+            for (String s : Globals.getChannelTypes()) {
+                if (s.equalsIgnoreCase(args)) {
+                    command.guildConfig.setUpChannel(s, command.channelID);
+                    return "> This channel is now the Server's **" + s + "** channel.";
                 }
-                builder.append("> Could not find channel type \"" + args + "\"\n");
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
             }
+            builder.append("> Could not find channel type \"" + args + "\"\n");
         }
         EmbedBuilder embedBuilder = new EmbedBuilder();
         String title = "> Here is a list of available Channel Types:\n";
         ArrayList<String> channels = new ArrayList<>();
-        try {
-            for (Field f : Command.class.getDeclaredFields()) {
-                if (f.getName().contains("CHANNEL_") && f.getType() == String.class) {
-                    channels.add((String) f.get(null));
-                }
-            }
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
         Collections.sort(channels);
         embedBuilder.withDesc(builder.toString());
-        Utility.listFormatterEmbed(title, embedBuilder, channels, true);
+        Utility.listFormatterEmbed(title, embedBuilder, Globals.getChannelTypes(), true);
         embedBuilder.appendField(spacer, Utility.getCommandInfo(this, command), false);
         embedBuilder.withColor(Utility.getUsersColour(command.client.getOurUser(), command.guild));
         Utility.sendEmbededMessage("", embedBuilder.build(), command.channel);

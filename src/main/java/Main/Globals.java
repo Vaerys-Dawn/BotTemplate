@@ -7,7 +7,6 @@ import Commands.Command;
 import Commands.General.Hello;
 import Commands.Help.Help;
 import Commands.Help.Info;
-import Handlers.FileHandler;
 import Objects.DailyObject;
 import Objects.GuildContentObject;
 import POGOs.Config;
@@ -43,6 +42,8 @@ public class Globals {
     private static ArrayList<GuildContentObject> guildContentObjects = new ArrayList<>();
     private static ArrayList<Command> commands = new ArrayList<>();
     private static ArrayList<DailyObject> dailyObjects = new ArrayList<>();
+    private static ArrayList<String> channelTypes = new ArrayList<>();
+    private static ArrayList<String> commandTypes = new ArrayList<>();
 
     final static Logger logger = LoggerFactory.getLogger(Globals.class);
 
@@ -69,12 +70,34 @@ public class Globals {
         //Help commands
         commands.add(new Help());
         commands.add(new Info());
-        //RoleSelect commands
+
+
         logger.info(commands.size() + " Commands Loaded.");
 
-        //DM commands
         //validate commands
         validate();
+
+        //load commandTypes and ChannelTypes
+        for (Command c: commands){
+            boolean typeFound = false;
+            boolean channelFound = false;
+            for (String s: commandTypes){
+                if (c.type().equals(s)){
+                    typeFound = true;
+                }
+            }
+            for (String s: channelTypes){
+                if (c.channel().equals(s)){
+                    channelFound = true;
+                }
+            }
+            if (!typeFound){
+                commandTypes.add(c.type());
+            }
+            if (!channelFound && c.channel() != null){
+                channelTypes.add(c.channel());
+            }
+        }
     }
 
     private static void validate() throws IllegalArgumentException {
@@ -185,5 +208,13 @@ public class Globals {
 
     public static ArrayList<DailyObject> getDailyObjects() {
         return dailyObjects;
+    }
+
+    public static ArrayList<String> getChannelTypes() {
+        return channelTypes;
+    }
+
+    public static ArrayList<String> getCommandTypes() {
+        return commandTypes;
     }
 }

@@ -1,6 +1,7 @@
 package POGOs;
 
 import Main.Constants;
+import Main.Globals;
 import Objects.ChannelTypeObject;
 import sx.blah.discord.handle.obj.IGuild;
 
@@ -10,7 +11,7 @@ import java.util.ArrayList;
  * Created by Vaerys on 03/08/2016.
  */
 public class GuildConfig {
-    String prefixCommand = Constants.PREFIX_COMMAND;
+    String prefixCommand = Globals.defaultPrefixCommand;
     boolean properlyInit = false;
     String guildName = "";
 

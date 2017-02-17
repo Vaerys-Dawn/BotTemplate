@@ -20,7 +20,7 @@ public class Help implements Command {
 
     @Override
     public String execute(String args, CommandObject command) {
-        ArrayList<String> types = new ArrayList<>();
+        ArrayList<String> types = Globals.getCommandTypes();
         EmbedBuilder helpEmbed = new EmbedBuilder();
         StringBuilder builder = new StringBuilder();
         ArrayList<String> commandList = new ArrayList<>();
@@ -33,18 +33,6 @@ public class Help implements Command {
             helpEmbed.withColor(color);
         }
 
-        //getting Types of commands.
-        for (Command c : commands) {
-            boolean typeFound = false;
-            for (String s : types) {
-                if (c.type().equals(s)) {
-                    typeFound = true;
-                }
-            }
-            if (!typeFound) {
-                types.add(c.type());
-            }
-        }
         //sort types
         Collections.sort(types);
 
@@ -69,9 +57,6 @@ public class Help implements Command {
                         if (c.type().equalsIgnoreCase(s)) {
                             commandList.add(command.guildConfig.getPrefixCommand() + c.names()[0]);
                         }
-                    }
-                    for (String sL : commandList){
-                        System.out.println(sL);
                     }
                 }
             }
