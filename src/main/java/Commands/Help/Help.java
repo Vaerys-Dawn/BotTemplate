@@ -33,6 +33,13 @@ public class Help implements Command {
             helpEmbed.withColor(color);
         }
 
+        if (!command.authorID.equals(Globals.creatorID)) {
+            for (int i = 0; i < types.size();i++) {
+                if (types.get(i).equals(Command.TYPE_CREATOR)){
+                    types.remove(i);
+                }
+            }
+        }
         //sort types
         Collections.sort(types);
 

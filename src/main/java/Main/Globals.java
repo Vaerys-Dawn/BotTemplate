@@ -1,12 +1,11 @@
 package Main;
 
-import Commands.Admin.ChannelHere;
-import Commands.Admin.Shutdown;
-import Commands.Admin.UpdateAvatar;
 import Commands.Command;
-import Commands.General.Hello;
-import Commands.Help.Help;
-import Commands.Help.Info;
+import Commands.Creator.*;
+import Commands.Admin.*;
+import Commands.General.*;
+import Commands.Help.*;
+import Commands.InitCommands;
 import Objects.DailyObject;
 import Objects.GuildContentObject;
 import POGOs.Config;
@@ -62,42 +61,48 @@ public class Globals {
 
     private static void initCommands() {
         //Admin commands
-        commands.add(new ChannelHere());
-        commands.add(new Shutdown());
-        commands.add(new UpdateAvatar());
-        //General commands
-        commands.add(new Hello());
-        //Help commands
-        commands.add(new Help());
-        commands.add(new Info());
 
-
-        logger.info(commands.size() + " Commands Loaded.");
+        // this command will dynamically show up depending on if you are using channels or not.
+        commands = InitCommands.init();
 
         //validate commands
         validate();
 
-        //load commandTypes and ChannelTypes
-        for (Command c: commands){
-            boolean typeFound = false;
+        //Setup for Channel Types
+        for (Command c : commands) {
             boolean channelFound = false;
-            for (String s: commandTypes){
-                if (c.type().equals(s)){
-                    typeFound = true;
-                }
-            }
-            for (String s: channelTypes){
-                if (c.channel().equals(s)){
+            for (String s : channelTypes) {
+                if (c.channel().equals(s)) {
                     channelFound = true;
                 }
             }
-            if (!typeFound){
-                commandTypes.add(c.type());
-            }
-            if (!channelFound && c.channel() != null){
+            if (!channelFound && c.channel() != null) {
                 channelTypes.add(c.channel());
             }
         }
+
+        //auto remover code for Commands.Admin.ChannelHere, will remove if channels are not in use.
+        if (channelTypes.size() == 0) {
+            for (int i = 0; i < commands.size(); i++) {
+                if (commands.get(i).names()[0].equalsIgnoreCase(new ChannelHere().names()[0])) {
+                    commands.remove(i);
+                }
+            }
+        }
+
+        //setup for Command Types.
+        for (Command c : commands) {
+            boolean typeFound = false;
+            for (String s : commandTypes) {
+                if (c.type().equals(s)) {
+                    typeFound = true;
+                }
+            }
+            if (!typeFound) {
+                commandTypes.add(c.type());
+            }
+        }
+        logger.info(commands.size() + " Commands Loaded.");
     }
 
     private static void validate() throws IllegalArgumentException {
@@ -187,7 +192,7 @@ public class Globals {
     }
 
     public static void saveFiles() {
-        logger.debug("Saving Files.");
+        logger.info("Saving Files.");
         Globals.isModifingFiles = true;
         Globals.getGuildContentObjects().forEach(GuildContentObject::saveFiles);
         Globals.isModifingFiles = false;

@@ -113,9 +113,11 @@ public class TimedEvents {
     }
 
     private static void doEventFiveMin(ZonedDateTime nowUTC) {
+        while (!Globals.getClient().isReady());
         ZonedDateTime nextTimeUTC;
         nextTimeUTC = nowUTC.withSecond(0).withMinute(nowUTC.getMinute() + 1);
-        long initialDelay = (nextTimeUTC.toEpochSecond() - nowUTC.toEpochSecond()) + 2 * 60;
+        long initialDelay = (nextTimeUTC.toEpochSecond() - nowUTC.toEpochSecond());
+        logger.info("Delay till first Backup: " + initialDelay);
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -123,6 +125,7 @@ public class TimedEvents {
                 //Sending isAlive Check.
                 try {
                     Globals.getClient().checkLoggedIn("IsAlive");
+                    Globals.saveFiles();
                 } catch (DiscordException e) {
                     logger.error(e.getErrorMessage());
                     logger.info("Logging back in.");
@@ -133,7 +136,6 @@ public class TimedEvents {
                         //ignore exception
                     }
                 }
-                Globals.saveFiles();
             }
         }, initialDelay * 1000 , 5 * 60 * 1000);
     }

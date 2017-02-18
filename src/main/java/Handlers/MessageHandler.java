@@ -50,6 +50,11 @@ public class MessageHandler {
         for (Command c : commands) {
             for (String name : c.names()) {
                 if (command.equalsIgnoreCase(guildConfig.getPrefixCommand() + name)) {
+
+                    //hides creator commands from anyone but the bot owner.
+                    if (c.type().equals(Command.TYPE_CREATOR) && !commandObject.authorID.equals(Globals.creatorID)){
+                        return ;
+                    }
                     //command logging
                     logger.debug(Utility.loggingFormatter("COMMAND",command,args,commandObject));
 

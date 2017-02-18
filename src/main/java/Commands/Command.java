@@ -12,6 +12,7 @@ public interface Command {
     String TYPE_GENERAL = "General";
     String TYPE_ADMIN = "Admin";
     String TYPE_HELP = "Help";
+    String TYPE_CREATOR = "Creator";
 
     //Channel Constants
     String CHANNEL_GENERAL = "General";

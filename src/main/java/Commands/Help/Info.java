@@ -25,6 +25,10 @@ public class Info implements Command {
             for (String s : c.names()) {
                 if (args.equalsIgnoreCase(s)) {
 
+                    if (c.type().equals(Command.TYPE_CREATOR) && !command.authorID.equals(Globals.creatorID)){
+                        return error;
+                    }
+
                     EmbedBuilder infoEmbed = new EmbedBuilder();
                     Color color = Utility.getUsersColour(Globals.getClient().getOurUser(), command.guild);
                     if (color != null) {
