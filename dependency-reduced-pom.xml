@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.vaerys</groupId>
   <artifactId>BotTemplate</artifactId>
-  <version>0.0.4</version>
+  <version>0.0.5</version>
   <build>
     <resources>
       <resource>
@@ -41,7 +41,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>Main.Main</mainClass>
+                  <mainClass>com.github.vaerys.main.Main</mainClass>
                 </transformer>
               </transformers>
             </configuration>

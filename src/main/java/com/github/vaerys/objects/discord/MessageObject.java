@@ -1,0 +1,20 @@
+package com.github.vaerys.objects.discord;
+
+import sx.blah.discord.handle.obj.IMessage;
+
+public class MessageObject {
+
+    public ClientObject client;
+    private IMessage object;
+    public long longID;
+
+    public MessageObject(IMessage message, GuildObject guild) {
+        client = new ClientObject(message.getClient(), guild);
+        this.object = message;
+        this.longID = message.getLongID();
+    }
+
+    public IMessage get() {
+        return object;
+    }
+}
