@@ -1,12 +1,13 @@
 package com.github.vaerys.commands;
 
+import com.github.vaerys.commands.creator.SetAvatar;
+import com.github.vaerys.commands.creator.SetUsername;
+import com.github.vaerys.commands.creator.Shutdown;
 import com.github.vaerys.commands.general.Hello;
 import com.github.vaerys.objects.setup.Command;
-import com.github.vaerys.objects.setup.CommandObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,10 +25,12 @@ public class CommandInit {
         return commands;
     }
 
-    public static List<Command> getCreator(){
+    public static List<Command> getCreator() {
         List<Command> commands = new ArrayList();
 
-
+        commands.add(new SetAvatar());
+        commands.add(new SetUsername());
+        commands.add(new Shutdown());
 
         checkList(commands);
         return commands;

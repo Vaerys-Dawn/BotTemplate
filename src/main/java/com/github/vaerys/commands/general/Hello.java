@@ -6,8 +6,8 @@ import sx.blah.discord.handle.obj.Permissions;
 
 public class Hello implements Command {
     @Override
-    public void execute(String args, CommandObject command) {
-        command.withResponse("Hello " + command.user.displayName + ".").buildMessage();
+    public String execute(String args, CommandObject command) {
+        return "Hello " + command.user.displayName + ".";
     }
 
     @Override

@@ -25,7 +25,7 @@ public interface Command {
 
     Logger logger = LoggerFactory.getLogger(Command.class);
 
-    void execute(String args, CommandObject command);
+    String execute(String args, CommandObject command);
 
     //descriptors
     String[] names();

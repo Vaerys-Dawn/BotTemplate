@@ -70,7 +70,7 @@ public class CommandObject {
         return this;
     }
 
-    public void buildMessage() {
+    public void send() {
         if (response != null && !response.isEmpty() && embed == null && file == null) {
             Globals.messages.add(RequestBuffer.request(() -> {
                 return channel.get().sendMessage(response);

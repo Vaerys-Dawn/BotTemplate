@@ -18,6 +18,7 @@ import java.util.Properties;
 public class Globals {
     public static long creatorID = 153159020528533505L;
     static List<Command> commands;
+    static List<Command> creatorCommands;
     public static boolean savingFiles = false;
     public static boolean shuttingDown = false;
     public static boolean isReady = false;
@@ -33,6 +34,9 @@ public class Globals {
 
     public Globals() {
         commands = CommandInit.get();
+        creatorCommands = CommandInit.getCreator();
+        logger.info(commands.size() + " Commands loaded.");
+        logger.info(creatorCommands.size() + " Creator Commands loaded.");
     }
 
     public static List<Command> getCommands() {
@@ -93,4 +97,11 @@ public class Globals {
         }
     }
 
+    public static List<GuildObject> getGuilds() {
+        return guilds;
+    }
+
+    public static List<Command> getCreatorCommands() {
+        return creatorCommands;
+    }
 }
